@@ -14,7 +14,6 @@ int8_t si4463_sendCommand(si4463_t* si4463, uint8_t* cmdData, uint8_t cmdLen);
 int8_t si4463_waitforCTS(si4463_t* si4463);
 int8_t si4463_getResponse(si4463_t* si4463, uint8_t* respData, uint8_t respLen);
 int8_t si4463_writeTxFiFo(si4463_t* si4463, uint8_t* txFifoData, uint8_t txFifoLen);
-int8_t si4463_startTx(si4463_t* si4463, uint16_t dataLen, si4463_state nextState);
 int8_t si4463_readRxDataBuff(si4463_t* si4463, uint8_t* rxFifoData, uint8_t rxFifoLength);
 // int8_t si4463_getFastResponseReg(uint8_t* regVal, uint8_t startRegs, uint8_t regsNum);
 int8_t si4463_getFreqConfig(si4463_t* si4463);
@@ -42,6 +41,7 @@ uint8_t FSK_2400_TX[] = RADIO_CONFIGURATION_FSK_2400_TX;
 uint8_t FSK_2400_RX[] = RADIO_CONFIGURATION_FSK_2400_RX;
 uint8_t FSK_1200_TX[] = RADIO_CONFIGURATION_FSK_1200_TX;
 uint8_t FSK_1200_RX[] = RADIO_CONFIGURATION_FSK_1200_RX;
+uint8_t OOK_TX[] = RADIO_CONFIGURATION_OOK_TX;
 
 int8_t si4463_powerOnReset(si4463_t* si4463)
 {
@@ -493,6 +493,15 @@ int32_t si4463_getFrequency(si4463_t* si4463)
 int8_t si4463_setTxModulation(si4463_t* si4463, si4463_mod_type mod)
 {
     int res = SI4463_OK;
+    // OOK for beacons
+    if(mod == MOD_OOK)
+    {
+        res = si4463_configArray(si4463, OOK_TX);
+        si4463->settings.txMod = mod;
+        return res;
+    }
+
+    // GMSK and FSK for telemetries
     switch (si4463->settings.txDataRate)
     {
     case DR_9600:
@@ -886,3 +895,10 @@ int8_t si4463_rxInterrupt(si4463_t* si4463)
 	return si4463_setProperties(si4463, buff, 4, PROP_INT_CTL_ENABLE);
 }
 
+void si4463_controlOOK(si4463_t* si4463, bool toneOn)
+{
+    if(toneOn)
+        si4463->OOK(si4463->gpios.gpio_high);
+    else
+        si4463->OOK(si4463->gpios.gpio_low);
+}

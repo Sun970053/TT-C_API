@@ -411,6 +411,7 @@ typedef struct
     void                        (*DelayUs)(uint32_t delay);
     void                        (*NSEL)(bool val);
     void                        (*SDN)(bool val);
+    void                        (*OOK)(bool val);
     si4463_interrupt_handler_t  interrupts;
     si4463_gpio_handler_t       gpios;
     si4463_part_info_t          partInfo;
@@ -455,5 +456,7 @@ int8_t si4463_setTxDataRate(si4463_t* si4463, si4463_data_rate dataRate);
 int8_t si4463_setRxDataRate(si4463_t* si4463, si4463_data_rate dataRate);
 int16_t si4463_getDataRate(si4463_t* si4463);
 int8_t si4463_enterStandbyMode(void);
+int8_t si4463_startTx(si4463_t* si4463, uint16_t dataLen, si4463_state nextState);
+void si4463_controlOOK(si4463_t* si4463, bool toneOn);
 
 #endif
