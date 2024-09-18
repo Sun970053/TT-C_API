@@ -417,7 +417,7 @@ int8_t si4463_getFreqConfig(si4463_t* si4463)
     if(res == SI4463_OK)
     {
         si4463->freq.freq_inte = rxbuff[0];
-        si4463->freq.freq_frac = ((0x0F & rxbuff[1]) << 16) | (rxbuff[2] << 8) | rxbuff[3];
+        si4463->freq.freq_frac = ((0x0F & (uint32_t)rxbuff[1]) << 16) | ((uint32_t)rxbuff[2] << 8) | (uint32_t)rxbuff[3];
     }
     propNum = PROP_MODEM_CLKGEN_BAND;
     memset(rxbuff, '\0', 4);
@@ -483,7 +483,9 @@ int32_t si4463_getFrequency(si4463_t* si4463)
     int res = si4463_getFreqConfig(si4463);
     if(res == SI4463_OK)
     {
-        float frequecny = ((float)si4463->freq.freq_inte + (float)si4463->freq.freq_frac/pow(2, 19))*(si4463->freq.n_presc*(float)RADIO_CONFIGURATION_DATA_RADIO_XO_FREQ/si4463->freq.outdiv);
+        float fc = ((float)si4463->freq.freq_inte + (float)si4463->freq.freq_frac/524288.0);
+        float np = (si4463->freq.n_presc*(float)RADIO_CONFIGURATION_DATA_RADIO_XO_FREQ/si4463->freq.outdiv);
+        float frequecny = fc * np;
         int32_t rounded_freq = (int)(frequecny * 0.001 + 0.5)*1000;
         si4463->settings.frequency = rounded_freq;
         return si4463->settings.frequency;
