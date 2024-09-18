@@ -485,10 +485,9 @@ int32_t si4463_getFrequency(si4463_t* si4463)
     {
         float fc = ((float)si4463->freq.freq_inte + (float)si4463->freq.freq_frac/524288.0);
         float np = (si4463->freq.n_presc*(float)RADIO_CONFIGURATION_DATA_RADIO_XO_FREQ/si4463->freq.outdiv);
-        float frequecny = fc * np;
-        int32_t rounded_freq = (int)(frequecny * 0.001 + 0.5)*1000;
+        int32_t rounded_freq = (int32_t)(fc * np * 0.001 + 0.5)*1000;
         si4463->settings.frequency = rounded_freq;
-        return si4463->settings.frequency;
+        return SI4463_OK;
     }
     else
         return res;
