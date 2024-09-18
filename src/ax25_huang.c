@@ -200,11 +200,11 @@ uint16_t AX25Frame_HDLC_Generator(ax25frame_t* ax25frame, uint8_t** pStuffedFram
   *(frameBuffPtr++) = (uint8_t)((fcs >> 8) & 0xFF);
   *(frameBuffPtr++) = (uint8_t)(fcs & 0xFF);
 
-  printf("AX.25 frame\r\n");
-	printf("packet: ");
+  AX25_PRINTF("AX.25 frame\r\n");
+  AX25_PRINTF("packet: ");
 	for(int i = 0; i <  frameBuffLen + 2; i++)
-		printf("0x%02x ", frameBuff[i]);
-	printf("\r\n");
+	    AX25_PRINTF("0x%02x ", frameBuff[i]);
+	AX25_PRINTF("\r\n");
 
   // prepare buffer for the final frame (stuffed, with added preamble + flags and NRZI-encoded)
   // worst-case scenario: sequence of 1s, will have 120% of the original length, stuffed frame also includes both flags
@@ -341,11 +341,11 @@ uint16_t AX25Frame_HDLC_Parser(ax25frame_t* ax25frame , uint8_t* stuffedFrame, u
   memcpy(ax25frameBuff, frameBuff, ax25frameBuffLen);
   free(frameBuff);
 
-  printf("AX.25 frame\r\n");
-	printf("packet: ");
+  AX25_PRINTF("AX.25 frame\r\n");
+  AX25_PRINTF("packet: ");
 	for(int i = 0; i <  ax25frameBuffLen; i++)
-		printf("0x%02x ", ax25frameBuff[i]);
-	printf("\r\n");
+	    AX25_PRINTF("0x%02x ", ax25frameBuff[i]);
+	AX25_PRINTF("\r\n");
 
   // verify CRC result
   uint16_t verifyFcs = checksum(ax25frame, ax25frameBuff, ax25frameBuffLen - 2);

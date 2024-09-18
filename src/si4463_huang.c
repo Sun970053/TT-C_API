@@ -43,6 +43,8 @@ uint8_t FSK_1200_TX[] = RADIO_CONFIGURATION_FSK_1200_TX;
 uint8_t FSK_1200_RX[] = RADIO_CONFIGURATION_FSK_1200_RX;
 uint8_t OOK_TX[] = RADIO_CONFIGURATION_OOK_TX;
 
+//uint8_t cmd[SI4463_MAX_FIFO_SIZE + 1];
+
 int8_t si4463_powerOnReset(si4463_t* si4463)
 {
     si4463->SDN(true);
@@ -781,6 +783,7 @@ int8_t si4463_writeTxFiFo(si4463_t* si4463, uint8_t* txFifoData, uint8_t txFifoL
     int res = SI4463_OK;
     uint8_t* cmd = (uint8_t*)malloc((txFifoLen + 1)*sizeof(uint8_t));
     memset(cmd, '\0', txFifoLen + 1);
+//    memset(cmd, '\0', 100);
     cmd[0] = WRITE_TX_FIFO;
     memcpy(&cmd[1], txFifoData, txFifoLen);
     if(!si4463_sendCommand(si4463, cmd, txFifoLen + 1)) res = SI4463_ERR_WRITE_REG;
@@ -792,7 +795,7 @@ int8_t si4463_writeTxFiFo(si4463_t* si4463, uint8_t* txFifoData, uint8_t txFifoL
 
 int8_t si4463_startTx(si4463_t* si4463, uint16_t dataLen, si4463_state nextState)
 {
-    uint8_t cmd[5] = {START_TX, RADIO_CONFIGURATION_DATA_CHANNEL_NUMBER, 
+    uint8_t cmd[5] = {START_TX, RADIO_CONFIGURATION_DATA_CHANNEL_NUMBER,
             (nextState << 4), ((dataLen >> 8) & 0x001F), (dataLen & 0x00FF)};
     if(!si4463_sendCommand(si4463, cmd, sizeof(cmd))) return SI4463_ERR_WRITE_REG;
     if(!si4463_waitforCTS(si4463)) return SI4463_CTS_TIMEOUT;

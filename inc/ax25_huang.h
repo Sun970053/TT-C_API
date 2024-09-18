@@ -11,6 +11,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Define debugging. If we need to enable printf, uncomment this line. */
+//#define DEBUG2
+
+#ifdef DEBUG2
+    #define AX25_PRINTF(...) printf(__VA_ARGS__)
+#else
+    #define AX25_PRINTF(...)
+#endif
+
 // macros to access bits in byte array, from http://www.mathcs.emory.edu/~cheung/Courses/255/Syllabus/1-C-intro/bit-array.html
 #define SET_BIT_IN_ARRAY(A, k)                                  ( A[(k/8)] |= (1 << (k%8)) )
 #define CLEAR_BIT_IN_ARRAY(A, k)                                ( A[(k/8)] &= ~(1 << (k%8)) )

@@ -8,7 +8,7 @@
 #ifndef INC_SI4463_HUANG_H_
 #define INC_SI4463_HUANG_H_
 
-#include "radio_config_Si4463_GMSK_9600.h"
+#include "radio_config_Si4468_GMSK_9600.h"
 #include "radio_config_selection.h"
 #include <stdio.h>
 #include <stdint.h>
@@ -16,13 +16,15 @@
 #include <stdbool.h>
 
 /* Define debugging. If we need to enable printf, uncomment this line. */
-#define DEBUG1
+//#define DEBUG1
 
 #ifdef DEBUG1
     #define DEBUG_PRINTF(...) printf(__VA_ARGS__)
 #else
     #define DEBUG_PRINTF(...)
 #endif
+
+//#define SI4463_MAX_FIFO_SIZE            100
 
 /* Boot Commands */
 #define POWER_UP                        0x02
