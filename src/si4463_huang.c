@@ -718,8 +718,8 @@ int8_t si4463_getDataRateConfig(si4463_t* si4463)
     int res = si4463_getProperties(si4463, rxbuff, 7, propNum);
     if(res == SI4463_OK)
     {
-        si4463->dr.modemDataRate = (rxbuff[0] << 16) | (rxbuff[1] << 8) | rxbuff[2];
-        si4463->dr.modemTxNCOMode = ((rxbuff[3] & 0x03) << 24) | (rxbuff[4] << 16) | (rxbuff[5] << 8) | rxbuff[6];
+        si4463->dr.modemDataRate = ((uint32_t)rxbuff[0] << 16) | ((uint32_t)rxbuff[1] << 8) | (uint32_t)rxbuff[2];
+        si4463->dr.modemTxNCOMode = ((uint32_t)(rxbuff[3] & 0x03) << 24) | ((uint32_t)rxbuff[4] << 16) | ((uint32_t)rxbuff[5] << 8) | (uint32_t)rxbuff[6];
         si4463->dr.TxOSR = (rxbuff[3] & 0x0C) >> 2;
         return res;
     }
