@@ -26,6 +26,9 @@
 #define TEST_BIT_IN_ARRAY(A, k)                                 ( A[(k/8)] & (1 << (k%8)) )
 #define GET_BIT_IN_ARRAY(A, k)                                  ( (A[(k/8)] & (1 << (k%8))) ? 1 : 0 )
 
+// maximum payload length
+#define AX25_MAX_PAYLOAD_LENGTH (255)
+
 // maximum callsign length in bytes
 #define RADIOLIB_AX25_MAX_CALLSIGN_LEN                          6
 
@@ -140,10 +143,10 @@ typedef struct
   uint8_t srcSSID;
   uint8_t control;
   uint8_t protocolID;
-  uint16_t infoLen;
+  uint16_t payloadLen;
   uint8_t rcvSeqNumber;
   uint16_t sendSeqNumber;
-  uint8_t* info;
+  uint8_t payload[AX25_MAX_PAYLOAD_LENGTH];
   uint16_t preambleLen;
 }ax25sendframe_t;
 
@@ -155,10 +158,10 @@ typedef struct
   uint8_t srcSSID;
   uint8_t control;
   uint8_t protocolID;
-  uint16_t infoLen;
+  uint16_t payloadLen;
   uint8_t rcvSeqNumber;
   uint16_t sendSeqNumber;
-  uint8_t* info;
+  uint8_t payload[AX25_MAX_PAYLOAD_LENGTH];
   uint16_t preambleLen;
   bool isCrcOk;
 }ax25receiveframe_t;

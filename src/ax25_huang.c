@@ -17,8 +17,13 @@ uint32_t d_shift_register = 0;
 uint32_t d_taps[32];
 uint32_t d_tap_count;
 
+// For sending payload
+uint8_t stuffedFrameBuff[AX25_MAX_PAYLOAD_LENGTH];
 
-ax25sendframe_t* createAX25SendFrame(const char* destCallsign, uint8_t destSSID, const char* srcCallsign, uint8_t srcSSID, uint8_t control, uint8_t protocolID, uint8_t* info, uint16_t infoLen, uint16_t preLen)
+// For receiving payload
+uint8_t ax25frameBuff[AX25_MAX_PAYLOAD_LENGTH];
+
+ax25sendframe_t* createAX25SendFrame(const char* destCallsign, uint8_t destSSID, const char* srcCallsign, uint8_t srcSSID, uint8_t control, uint8_t protocolID, uint8_t* payload, uint16_t payloadLen, uint16_t preLen)
 {
   ax25sendframe_t* ax25frame = (ax25sendframe_t*)malloc(sizeof(ax25sendframe_t));
 
@@ -43,11 +48,12 @@ ax25sendframe_t* createAX25SendFrame(const char* destCallsign, uint8_t destSSID,
   ax25frame->protocolID = protocolID;
 
   // info field
-  ax25frame->infoLen = infoLen;
-  if(infoLen > 0) 
+  ax25frame->payloadLen = payloadLen;
+  if(payloadLen > 0)
   {
-      ax25frame->info = (uint8_t*)malloc(infoLen*sizeof(uint8_t));
-      memcpy(ax25frame->info, info, infoLen);
+//      ax25frame->info = (uint8_t*)malloc(infoLen*sizeof(uint8_t));
+      memset(ax25frame->payload, '\0', AX25_MAX_PAYLOAD_LENGTH);
+      memcpy(ax25frame->payload, payload, payloadLen);
   }
 
   // save preamble length
@@ -89,25 +95,29 @@ ax25receiveframe_t* createAX25ReceiveFrame(const char* destCallsign, uint8_t des
 void deleteAX25SendFrame(ax25frame_t* ax25frame)
 {
   // deallocate info field
-  if(ax25frame->ax25SendFrame->infoLen > 0)
-  {
-      free(ax25frame->ax25SendFrame->info);
-      ax25frame->ax25SendFrame->info = NULL;
-  }
-  free(ax25frame->ax25SendFrame);
-  ax25frame->ax25SendFrame = NULL;
+//  if(ax25frame->ax25SendFrame->infoLen > 0)
+//  {
+//      free(ax25frame->ax25SendFrame->info);
+//      ax25frame->ax25SendFrame->info = NULL;
+//  }
+//  free(ax25frame->ax25SendFrame);
+//  ax25frame->ax25SendFrame = NULL;
+    // set the values in payload array to 0
+    memset(ax25frame->ax25SendFrame->payload, '\0', ax25frame->ax25SendFrame->payloadLen);
 }
 
 void deleteAX25ReceiveFrame(ax25frame_t* ax25frame)
 {
   // deallocate info field
-  if(ax25frame->ax25RcvFrame->infoLen > 0)
-  {
-      free(ax25frame->ax25SendFrame->info);
-      ax25frame->ax25SendFrame->info = NULL;
-  }
-  free(ax25frame->ax25SendFrame);
-  ax25frame->ax25SendFrame = NULL;
+//  if(ax25frame->ax25RcvFrame->infoLen > 0)
+//  {
+//      free(ax25frame->ax25SendFrame->info);
+//      ax25frame->ax25SendFrame->info = NULL;
+//  }
+//  free(ax25frame->ax25SendFrame);
+//  ax25frame->ax25SendFrame = NULL;
+    // set the values in payload array to 0
+    memset(ax25frame->ax25RcvFrame->payload, '\0', ax25frame->ax25RcvFrame->payloadLen);
 }
 
 void initCRC(ax25frame_t* ax25frame)
@@ -124,13 +134,14 @@ uint16_t AX25Frame_HDLC_Generator(ax25frame_t* ax25frame, uint8_t** pStuffedFram
 {
   // check destination callsign length (6 characters max)
   if(strlen(ax25frame->ax25SendFrame->destCallsign) > RADIOLIB_AX25_MAX_CALLSIGN_LEN) {
-      return(RADIOLIB_ERR_INVALID_CALLSIGN);
+      return (uint16_t)RADIOLIB_ERR_INVALID_CALLSIGN;
   }
 
   // calculate frame length without FCS (destination address, source address, repeater addresses, control, PID, info)
-  size_t frameBuffLen = (2*(RADIOLIB_AX25_MAX_CALLSIGN_LEN + 1)) + 1 + 1 + ax25frame->ax25SendFrame->infoLen;
+  size_t frameBuffLen = (2*(RADIOLIB_AX25_MAX_CALLSIGN_LEN + 1)) + 1 + 1 + ax25frame->ax25SendFrame->payloadLen;
   // create frame buffer without preamble, start or stop flags
-  uint8_t* frameBuff = (uint8_t*)malloc((frameBuffLen + 2)*sizeof(uint8_t));
+//  uint8_t* frameBuff = (uint8_t*)malloc((frameBuffLen + 2)*sizeof(uint8_t));
+  uint8_t frameBuff[AX25_MAX_PAYLOAD_LENGTH] = {0};
   uint8_t* frameBuffPtr = frameBuff;
 
   // set destination callsign - all address field bytes are shifted by one bit to make room for HDLC address extension bit
@@ -178,9 +189,9 @@ uint16_t AX25Frame_HDLC_Generator(ax25frame_t* ax25frame, uint8_t** pStuffedFram
   }
 
   // set info field of the frames that have it
-  if(ax25frame->ax25SendFrame->infoLen > 0) {
-      memcpy(frameBuffPtr, ax25frame->ax25SendFrame->info, ax25frame->ax25SendFrame->infoLen);
-      frameBuffPtr += ax25frame->ax25SendFrame->infoLen;
+  if(ax25frame->ax25SendFrame->payloadLen > 0) {
+      memcpy(frameBuffPtr, ax25frame->ax25SendFrame->payload, ax25frame->ax25SendFrame->payloadLen);
+      frameBuffPtr += ax25frame->ax25SendFrame->payloadLen;
   }
 
   // flip bit order
@@ -208,7 +219,8 @@ uint16_t AX25Frame_HDLC_Generator(ax25frame_t* ax25frame, uint8_t** pStuffedFram
 
   // prepare buffer for the final frame (stuffed, with added preamble + flags and NRZI-encoded)
   // worst-case scenario: sequence of 1s, will have 120% of the original length, stuffed frame also includes both flags
-  uint8_t* stuffedFrameBuff = (uint8_t*)malloc((ax25frame->ax25SendFrame->preambleLen + 1 + (6*frameBuffLen)/5 + 2)*sizeof(uint8_t));
+//  uint8_t* stuffedFrameBuff = (uint8_t*)malloc((ax25frame->ax25SendFrame->preambleLen + 1 + (6*frameBuffLen)/5 + 2)*sizeof(uint8_t));
+
 
   // initialize buffer to all zeros
   memset(stuffedFrameBuff, 0x00, ax25frame->ax25SendFrame->preambleLen + 1 + (6*frameBuffLen)/5 + 2);
@@ -252,7 +264,7 @@ uint16_t AX25Frame_HDLC_Generator(ax25frame_t* ax25frame, uint8_t** pStuffedFram
   }
 
     // deallocate memory
-    free(frameBuff);
+//    free(frameBuff);
 
     // set preamble bytes and start flag field
     for(uint16_t i = 0; i < ax25frame->ax25SendFrame->preambleLen + 1; i++)
@@ -286,10 +298,11 @@ uint16_t AX25Frame_HDLC_Parser(ax25frame_t* ax25frame , uint8_t* stuffedFrame, u
   // calculate the unstuff bytes length without preamble and front flag 
   size_t frameBuffLen = stuffedFrameLen - ax25frame->ax25RcvFrame->preambleLen - 1;
   // prepare buffer for the unstuffed frame (only AX.25 frame)
-  uint8_t* frameBuff = (uint8_t*)malloc(frameBuffLen * sizeof(uint8_t));
+//  uint8_t* frameBuff = (uint8_t*)malloc(frameBuffLen * sizeof(uint8_t));
+  uint8_t frameBuff[AX25_MAX_PAYLOAD_LENGTH] = {0};
   
   // initialize buffer to all zeros
-  memset(frameBuff, '\0', frameBuffLen);
+  memset(frameBuff, '\0', AX25_MAX_PAYLOAD_LENGTH);
 
   // stuff bits (skip preamble and front flag)
   uint16_t stuffedFrameBuffLenBits = 8*(ax25frame->ax25RcvFrame->preambleLen + 1);
@@ -337,9 +350,11 @@ uint16_t AX25Frame_HDLC_Parser(ax25frame_t* ax25frame , uint8_t* stuffedFrame, u
   }
 
   // Reallocate the AX.25 frame size
-  uint8_t* ax25frameBuff = (uint8_t*)malloc(ax25frameBuffLen * sizeof(uint8_t));
+//  uint8_t* ax25frameBuff = (uint8_t*)malloc(ax25frameBuffLen * sizeof(uint8_t));
+  // Clean the content of ax.25 frame buffer
+  memset(ax25frameBuff, '\0', AX25_MAX_PAYLOAD_LENGTH);
   memcpy(ax25frameBuff, frameBuff, ax25frameBuffLen);
-  free(frameBuff);
+//  free(frameBuff);
 
   AX25_PRINTF("AX.25 frame\r\n");
   AX25_PRINTF("packet: ");
@@ -401,17 +416,17 @@ uint16_t AX25Frame_HDLC_Parser(ax25frame_t* ax25frame , uint8_t* stuffedFrame, u
   }
 
   // get info field of the frames that have it
-  uint8_t infoLen = ax25frameBuffLen - ((2*(RADIOLIB_AX25_MAX_CALLSIGN_LEN + 1)) + 1 + 1 + 2);
-  uint8_t* info = (uint8_t*)malloc((infoLen + 1)*sizeof(uint8_t));
-  memset(info, '\0', (infoLen + 1)*sizeof(uint8_t));
-  memcpy(info, frameBuffPtr, infoLen);
-  ax25frame->ax25RcvFrame->infoLen = infoLen;
-  ax25frame->ax25RcvFrame->info = info;
+  uint8_t payloadLen = ax25frameBuffLen - ((2*(RADIOLIB_AX25_MAX_CALLSIGN_LEN + 1)) + 1 + 1 + 2);
+//  uint8_t* payload = (uint8_t*)malloc((payloadLen + 1)*sizeof(uint8_t));
+//  memset(payload, '\0', (payloadLen + 1)*sizeof(uint8_t));
+  memcpy(ax25frame->ax25RcvFrame->payload, frameBuffPtr, payloadLen);
+  ax25frame->ax25RcvFrame->payloadLen = payloadLen;
+//  ax25frame->ax25RcvFrame->payload = payload;
 
   if(ax25frame->ax25RcvFrame->isCrcOk == true)
-	  return RADIOLIB_ERR_NONE;
+	  return (uint16_t)RADIOLIB_ERR_NONE;
   else
-	  return RADIOLIB_ERR_RX_CRC_CHECKSUM;
+	  return (uint16_t)RADIOLIB_ERR_RX_CRC_CHECKSUM;
 }
 
 uint32_t reflect(uint32_t in, uint8_t bits) {
