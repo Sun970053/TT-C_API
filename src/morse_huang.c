@@ -9,12 +9,12 @@
 #include <string.h>
 
 // configurable params
-#define UNITSIZE_IN_MS                  (150000)
-#define WARMUP_PAUSE_IN_MS              (3000000)
-#define ENDOFTEXT_PAUSE_IN_MS           (3000000)
+#define UNITSIZE_IN_MS                  (150)
+#define WARMUP_PAUSE_IN_MS              (3000)
+#define ENDOFTEXT_PAUSE_IN_MS           (3000)
 // #define LONG_RETRY_PAUSE_IN_MS          (30000)
-#define LONG_RETRY_PAUSE_IN_MS          (1000000)
-#define LONG_CARRIER_DURATION_IN_MS     (4000000)
+#define LONG_RETRY_PAUSE_IN_MS          (1000)
+#define LONG_CARRIER_DURATION_IN_MS     (4000)
 
 #define MCODE(LEN, PATTERN)             ( (PATTERN << 3) | ( LEN & 0x7 ) )
 #define M_LEN(X)                        ( X & 0x7 )
@@ -123,8 +123,6 @@ morse_state morse_prepareNextChar(morse_t* morse)
             return msSendingSpace;
         }
     }
-    // It should never happen
-    return msSendingSpace;
 }
 
 morse_state morse_prepareNextDitDah(morse_t* morse)
