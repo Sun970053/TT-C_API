@@ -200,13 +200,6 @@ uint16_t AX25Frame_HDLC_Generator(ax25frame_t* ax25frame, uint8_t** pStuffedFram
       frameBuff[i] = reflect(frameBuff[i], 8);
   }
 
-  ax25frame->crc.size = 16;
-  ax25frame->crc.poly = RADIOLIB_CRC_CCITT_POLY;
-  ax25frame->crc.init = RADIOLIB_CRC_CCITT_INIT;
-  ax25frame->crc.out = RADIOLIB_CRC_CCITT_OUT;
-  ax25frame->crc.refIn = false;
-  ax25frame->crc.refOut = false;
-
   uint16_t fcs = checksum(ax25frame, frameBuff, frameBuffLen);
   *(frameBuffPtr++) = (uint8_t)((fcs >> 8) & 0xFF);
   *(frameBuffPtr++) = (uint8_t)(fcs & 0xFF);
@@ -419,6 +412,7 @@ uint16_t AX25Frame_HDLC_Parser(ax25frame_t* ax25frame , uint8_t* stuffedFrame, u
   uint8_t payloadLen = ax25frameBuffLen - ((2*(RADIOLIB_AX25_MAX_CALLSIGN_LEN + 1)) + 1 + 1 + 2);
 //  uint8_t* payload = (uint8_t*)malloc((payloadLen + 1)*sizeof(uint8_t));
 //  memset(payload, '\0', (payloadLen + 1)*sizeof(uint8_t));
+  memset(ax25frame->ax25RcvFrame->payload, '\0', AX25_MAX_PAYLOAD_LENGTH);
   memcpy(ax25frame->ax25RcvFrame->payload, frameBuffPtr, payloadLen);
   ax25frame->ax25RcvFrame->payloadLen = payloadLen;
 //  ax25frame->ax25RcvFrame->payload = payload;

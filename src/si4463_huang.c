@@ -43,7 +43,7 @@ uint8_t FSK_1200_TX[] = RADIO_CONFIGURATION_FSK_1200_TX;
 uint8_t FSK_1200_RX[] = RADIO_CONFIGURATION_FSK_1200_RX;
 uint8_t OOK_TX[] = RADIO_CONFIGURATION_OOK_TX;
 
-//uint8_t cmd[SI4463_MAX_FIFO_SIZE + 1];
+uint8_t gcmd[SI4463_MAX_FIFO_SIZE + 1];
 
 int8_t si4463_powerOnReset(si4463_t* si4463)
 {
@@ -149,25 +149,38 @@ int16_t si4463_getRxFifoInfo(si4463_t* si4463)
     return rxbuff[0];
 }
 
-int8_t si4463_getCurrentRSSI(si4463_t* si4463)
+int16_t si4463_getPacketInfo(si4463_t* si4463)
+{
+    uint8_t cmd[6] = {GET_PACKET_INFO};
+    uint8_t rxbuff[2] = {0};
+
+    if(!si4463_sendCommand(si4463, cmd, 1)) return SI4463_ERR_WRITE_REG;
+    if(!si4463_getResponse(si4463, rxbuff, 2)) return SI4463_ERR_READ_REG;
+
+    return rxbuff[1];
+}
+
+int16_t si4463_getCurrentRSSI(si4463_t* si4463)
 {
 	uint8_t cmd[2] = {GET_MODEM_STATUS, 0x00};
 	uint8_t rxbuff[8] = {0};
 	if(!si4463_sendCommand(si4463, cmd, 2)) return SI4463_ERR_WRITE_REG;
 	if(!si4463_getResponse(si4463, rxbuff, 8)) return SI4463_ERR_READ_REG;
 
-    si4463->status.currentRSSI = rxbuff[2]/2-120;
+	// si4468 RSSI calculation formula
+    si4463->status.currentRSSI = (int16_t)((float)rxbuff[2]/2 - 134.0f);
 	return si4463->status.currentRSSI;
 }
 
-int8_t si4463_getLatchRSSI(si4463_t* si4463)
+int16_t si4463_getLatchRSSI(si4463_t* si4463)
 {
 	uint8_t cmd[2] = {GET_MODEM_STATUS, 0x00};
 	uint8_t rxbuff[8] = {0};
 	if(!si4463_sendCommand(si4463, cmd, 2)) return SI4463_ERR_WRITE_REG;
 	if(!si4463_getResponse(si4463, rxbuff, 8)) return SI4463_ERR_READ_REG;
 
-    si4463->status.latchRSSI = rxbuff[3]/2-120;
+	// si4468 RSSI calculation formula
+    si4463->status.latchRSSI = (int16_t)((float)rxbuff[3]/2 - 134.0f);
 	return si4463->status.latchRSSI;
 }
 
@@ -219,6 +232,7 @@ int8_t si4463_getInterrupts(si4463_t* si4463)
     si4463->interrupts.txFifoAlmostEmpty = (phPend >> 1) & 0x1;
     si4463->interrupts.rxFifoAlmostFull = phPend & 0x1;
 
+    si4463->interrupts.latchrssi = (modemPend >> 7) & 0x1;
     si4463->interrupts.postambleDetect = (modemPend >> 6) & 0x1;
     si4463->interrupts.invalidSync = (modemPend >> 5) & 0x1;
     si4463->interrupts.rssiJump = (modemPend >> 4) & 0x1;
@@ -250,22 +264,28 @@ int8_t si4463_clearChipStatus(si4463_t* si4463)
 
 int8_t si4463_transmit(si4463_t* si4463, uint8_t* txData, uint8_t txDataLen, si4463_state nextState)
 {
-    int8_t result = si4463_txInterrupt(si4463);
+    int16_t result = si4463_txInterrupt(si4463);
     if(result != SI4463_OK) return result;
     result = si4463_clearInterrupts(si4463);
+    if(result != SI4463_OK) return result;
+    result = si4463_clearTxFifo(si4463);
     if(result != SI4463_OK) return result;
     result = si4463_getTxFifoInfo(si4463);
     if(result >= txDataLen)
     {
         result = si4463_writeTxFiFo(si4463, txData, txDataLen);
         if(result != SI4463_OK) return result;
-        result = si4463_startTx(si4463, txDataLen, nextState);
+        result = si4463_startTx(si4463, txDataLen + 1, nextState);
         if(result != SI4463_OK) return result;
         int counter = 0;
         // Check if IRQ pin is pulled down
         while(counter < SI4463_TRANSMIT_TIMEOUT)
         {
-            if(si4463->gpios.IRQ() == si4463->gpios.gpio_low) return SI4463_OK;
+            if(si4463->gpios.IRQ() == si4463->gpios.gpio_low)
+            {
+                result = si4463_clearInterrupts(si4463);
+                return result;
+            }
             si4463->DelayUs(1000);
             counter++;
         }
@@ -401,7 +421,7 @@ int8_t si4463_getCRC(si4463_t* si4463)
     if(res == SI4463_OK)
     {
         si4463->settings.crcSeed = (0x80 & rxbuff) >> 7;
-        si4463->settings.crcPoly = 0x0F & rxbuff;
+        si4463->settings.crcPoly = (si4463_crc_poly)(0x0F & rxbuff);
         return SI4463_OK;
     }
     else
@@ -720,7 +740,7 @@ int8_t si4463_getDataRateConfig(si4463_t* si4463)
     {
         si4463->dr.modemDataRate = ((uint32_t)rxbuff[0] << 16) | ((uint32_t)rxbuff[1] << 8) | (uint32_t)rxbuff[2];
         si4463->dr.modemTxNCOMode = ((uint32_t)(rxbuff[3] & 0x03) << 24) | ((uint32_t)rxbuff[4] << 16) | ((uint32_t)rxbuff[5] << 8) | (uint32_t)rxbuff[6];
-        si4463->dr.TxOSR = (rxbuff[3] & 0x0C) >> 2;
+        si4463->dr.TxOSR = (si4463_txosr)((rxbuff[3] & 0x0C) >> 2);
         return res;
     }
     else
@@ -782,15 +802,16 @@ int8_t si4463_getResponse(si4463_t* si4463, uint8_t* respData, uint8_t respLen)
 int8_t si4463_writeTxFiFo(si4463_t* si4463, uint8_t* txFifoData, uint8_t txFifoLen)
 {
     int res = SI4463_OK;
-    uint8_t* cmd = (uint8_t*)malloc((txFifoLen + 1)*sizeof(uint8_t));
-    memset(cmd, '\0', txFifoLen + 1);
+//    uint8_t* cmd = (uint8_t*)malloc((txFifoLen + 2)*sizeof(uint8_t));
+    memset(gcmd, '\0', SI4463_MAX_FIFO_SIZE + 1);
 //    memset(cmd, '\0', 100);
-    cmd[0] = WRITE_TX_FIFO;
-    memcpy(&cmd[1], txFifoData, txFifoLen);
-    if(!si4463_sendCommand(si4463, cmd, txFifoLen + 1)) res = SI4463_ERR_WRITE_REG;
+    gcmd[0] = WRITE_TX_FIFO;
+    gcmd[1] = txFifoLen;
+    memcpy(&gcmd[2], txFifoData, txFifoLen);
+    if(!si4463_sendCommand(si4463, gcmd, txFifoLen + 2)) res = SI4463_ERR_WRITE_REG;
     if(!si4463_waitforCTS(si4463)) res = SI4463_CTS_TIMEOUT;
 
-    free(cmd);
+//    free(cmd);
     return res;
 }
 
@@ -822,7 +843,6 @@ int8_t si4463_readRxDataBuff(si4463_t* si4463, uint8_t* rxFifoData, uint8_t rxFi
 int8_t si4463_configArray(si4463_t* si4463, uint8_t* configArray)
 {
     uint16_t index = 0, currentNum = 0;
-    uint16_t propertyNum = 0;
     while(configArray[index])
     {
         currentNum = configArray[index];
@@ -830,6 +850,8 @@ int8_t si4463_configArray(si4463_t* si4463, uint8_t* configArray)
             return SI4463_ERR_WRITE_REG;
         if(!si4463_waitforCTS(si4463))
             return SI4463_CTS_TIMEOUT;
+
+        uint16_t propertyNum = 0;
         if(configArray[index + 1] == 0x11)
         {
             propertyNum = (configArray[index + 2] << 8) | configArray[index + 4];
@@ -847,18 +869,19 @@ int8_t si4463_configArray(si4463_t* si4463, uint8_t* configArray)
 
 int8_t si4463_setProperties(si4463_t* si4463, uint8_t* setData, uint8_t setDataLen, uint16_t propNum)
 {
-    uint8_t res = SI4463_OK;
-    uint8_t* cmd = (uint8_t*)malloc((setDataLen + 4)*sizeof(uint8_t));
-    memset(cmd, '\0', setDataLen + 4);
-    cmd[0] = SET_PROPERTY;
-    cmd[1] = (uint8_t)(propNum >> 8);
-    cmd[2] = setDataLen;
-    cmd[3] = (uint8_t)(propNum & 0x00FF);
-    memcpy(&cmd[4], setData, setDataLen);
-    if(!si4463_sendCommand(si4463, cmd, setDataLen + 4)) res = SI4463_ERR_WRITE_REG;
+    int8_t res = SI4463_OK;
+//    uint8_t* cmd = (uint8_t*)malloc((setDataLen + 4)*sizeof(uint8_t));
+
+    memset(gcmd, '\0', SI4463_MAX_FIFO_SIZE + 1);
+    gcmd[0] = SET_PROPERTY;
+    gcmd[1] = (uint8_t)(propNum >> 8);
+    gcmd[2] = setDataLen;
+    gcmd[3] = (uint8_t)(propNum & 0x00FF);
+    memcpy(&gcmd[4], setData, setDataLen);
+    if(!si4463_sendCommand(si4463, gcmd, setDataLen + 4)) res = SI4463_ERR_WRITE_REG;
     if(!si4463_waitforCTS(si4463)) res = SI4463_CTS_TIMEOUT;
 
-    free(cmd);
+//    free(cmd);
     return res;
 }
 

@@ -84,7 +84,7 @@
 // Descriptions:
 //   INT_CTL_ENABLE - This property provides for global enabling of the three interrupt groups (Chip, Modem and Packet Handler) in order to generate HW interrupts at the NIRQ pin.
 */
-#define RF_INT_CTL_ENABLE_1 0x11, 0x01, 0x04, 0x00, 0x07, 0x3B, 0x00, 0x28
+#define RF_INT_CTL_ENABLE_1 0x11, 0x01, 0x04, 0x00, 0x07, 0x3B, 0x80, 0x28
 
 /*
 // Set properties:           RF_FRR_CTL_A_MODE_4
@@ -392,7 +392,7 @@
 // Descriptions:
 //   MODEM_RSSI_COMP - RSSI compensation value.
 */
-#define RF_MODEM_RSSI_COMP_1 0x11, 0x20, 0x01, 0x4E, 0x40
+#define RF_MODEM_RSSI_COMP_1 0x11, 0x20, 0x01, 0x4E, 0x32
 
 /*
 // Set properties:           RF_MODEM_CLKGEN_BAND_1

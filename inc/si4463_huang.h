@@ -24,7 +24,7 @@
     #define DEBUG_PRINTF(...)
 #endif
 
-//#define SI4463_MAX_FIFO_SIZE            100
+#define SI4463_MAX_FIFO_SIZE            100
 
 /* Boot Commands */
 #define POWER_UP                        0x02
@@ -308,6 +308,7 @@ typedef struct
     bool rxFifoAlmostFull;
 
     /* Modem */
+    bool latchrssi;
     bool postambleDetect;
     bool invalidSync;
     bool rssiJump;
@@ -398,8 +399,8 @@ typedef struct
 
 typedef struct
 {
-    int8_t currentRSSI;
-    int8_t latchRSSI;
+    int16_t currentRSSI;
+    int16_t latchRSSI;
 } si4463_status_t;
 
 
@@ -431,8 +432,9 @@ int8_t si4463_getPartInfo(si4463_t* si4463);
 int8_t si4463_getFuncInfo(si4463_t* si4463);
 int16_t si4463_getTxFifoInfo(si4463_t* si4463);
 int16_t si4463_getRxFifoInfo(si4463_t* si4463);
-int8_t si4463_getCurrentRSSI(si4463_t* si4463);
-int8_t si4463_getLatchRSSI(si4463_t* si4463);
+int16_t si4463_getPacketInfo(si4463_t* si4463);
+int16_t si4463_getCurrentRSSI(si4463_t* si4463);
+int16_t si4463_getLatchRSSI(si4463_t* si4463);
 int8_t si4463_clearTxFifo(si4463_t* si4463);
 int8_t si4463_clearRxFifo(si4463_t* si4463);
 int8_t si4463_clearInterrupts(si4463_t* si4463);
