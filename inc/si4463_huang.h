@@ -401,13 +401,16 @@ typedef struct
 {
     int16_t currentRSSI;
     int16_t latchRSSI;
+    int16_t ant1RSSI;
+    int16_t ant2RSSI;
+    uint16_t afcFreqOffset;
 } si4463_status_t;
 
 typedef struct
 {
     si4463_state currState;
     uint8_t currChannel;
-} si4463_state_t
+} si4463_state_t;
 
 typedef struct
 {
@@ -442,6 +445,7 @@ int16_t si4463_getRxFifoInfo(si4463_t* si4463);
 int16_t si4463_getPacketInfo(si4463_t* si4463);
 int8_t si4463_getCurrentRSSI(si4463_t* si4463);
 int8_t si4463_getLatchRSSI(si4463_t* si4463);
+int8_t si4463_getModemStatus(si4463_t* si4463);
 int8_t si4463_clearTxFifo(si4463_t* si4463);
 int8_t si4463_clearRxFifo(si4463_t* si4463);
 int8_t si4463_clearInterrupts(si4463_t* si4463);
