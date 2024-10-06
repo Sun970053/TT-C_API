@@ -430,6 +430,7 @@ int8_t si4463_init(si4463_t* si4463);
 int8_t si4463_checkNop(si4463_t* si4463);
 int8_t si4463_getPartInfo(si4463_t* si4463);
 int8_t si4463_getFuncInfo(si4463_t* si4463);
+int8_t si4463_getADCInfo(si4463_t* si4463);
 int16_t si4463_getTxFifoInfo(si4463_t* si4463);
 int16_t si4463_getRxFifoInfo(si4463_t* si4463);
 int16_t si4463_getPacketInfo(si4463_t* si4463);

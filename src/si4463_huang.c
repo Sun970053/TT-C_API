@@ -129,6 +129,15 @@ int8_t si4463_getFuncInfo(si4463_t* si4463)
     return SI4463_OK;
 }
 
+int8_t si4463_getADCInfo(si4463_t* si4463)
+{
+    uint8_t cmd[3] = {GET_ADC_READING, 0x18, 0xC5};
+    uint8_t rxbuff[6] = {0};
+    if(!si4463_sendCommand(si4463, cmd, 3)) return SI4463_ERR_WRITE_REG;
+    if(!si4463_getResponse(si4463, rxbuff, 6)) return SI4463_ERR_READ_REG;
+    return SI4463_OK;
+}
+
 int16_t si4463_getTxFifoInfo(si4463_t* si4463)
 {
     uint8_t cmd[2] = {FIFO_INFO, 0x00};

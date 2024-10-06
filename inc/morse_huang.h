@@ -5,6 +5,9 @@
  *      Author: Ting-Shan, Huang
  */
 
+#ifndef INC_MORSE_HUANG_H_
+#define INC_MORSE_HUANG_H_
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -58,3 +61,5 @@ int32_t morse_getTimeoutForState(morse_state state);
 bool morse_isToneActive(morse_t* morse);
 void morse_start(morse_t* morse);
 void morse_stop(morse_t* morse);
+
+#endif

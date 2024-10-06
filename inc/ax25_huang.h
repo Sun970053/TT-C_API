@@ -27,7 +27,7 @@
 #define GET_BIT_IN_ARRAY(A, k)                                  ( (A[(k/8)] & (1 << (k%8))) ? 1 : 0 )
 
 // maximum payload length
-#define AX25_MAX_PAYLOAD_LENGTH (255)
+#define AX25_MAX_PAYLOAD_LENGTH (128)
 
 // maximum callsign length in bytes
 #define RADIOLIB_AX25_MAX_CALLSIGN_LEN                          6
