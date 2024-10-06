@@ -758,7 +758,7 @@ int16_t si4463_getDataRate(si4463_t* si4463)
 
 int8_t si4463_enterStandbyMode(si4463_t* si4463)
 {
-
+    return SI4463_OK;
 }
 
 int8_t si4463_getDeviceState(si4463_t* si4463)
@@ -780,8 +780,8 @@ int8_t si4463_setDeviceState(si4463_t* si4463, si4463_state state)
     cmd[0] = CHANGE_STATE;
     cmd[1] = (uint8_t)state;
 
-    if(!si4463_sendCommand(si4463, &cmd, 2)) return SI4463_ERR_WRITE_REG;
-    if(!si4463_waitforCTS(si4463)) res = SI4463_CTS_TIMEOUT;
+    if(!si4463_sendCommand(si4463, cmd, 2)) return SI4463_ERR_WRITE_REG;
+    if(!si4463_waitforCTS(si4463)) return SI4463_CTS_TIMEOUT;
 
     si4463->state.currState = state;
     return SI4463_OK;
@@ -907,17 +907,10 @@ int8_t si4463_configArray(si4463_t* si4463, uint8_t* configArray)
         if(!si4463_waitforCTS(si4463))
             return SI4463_CTS_TIMEOUT;
 
-        uint16_t propertyNum = 0;
         if(configArray[index + 1] == 0x11)
-        {
-            propertyNum = (configArray[index + 2] << 8) | configArray[index + 4];
-            DEBUG_PRINTF("Property number: 0x%04x\r\n", propertyNum);
-        }
+            DEBUG_PRINTF("Property number: 0x%04x\r\n", (configArray[index + 2] << 8) | configArray[index + 4]);
 		else
-		{
-            propertyNum = configArray[index + 1];
-            DEBUG_PRINTF("Command number: 0x%02x\r\n", propertyNum);
-        }
+            DEBUG_PRINTF("Command number: 0x%02x\r\n", configArray[index + 1]);
 		index = index + currentNum + 1;
     }
     return SI4463_OK;
