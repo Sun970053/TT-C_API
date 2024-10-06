@@ -169,7 +169,7 @@ int16_t si4463_getPacketInfo(si4463_t* si4463)
     return rxbuff[1];
 }
 
-int16_t si4463_getCurrentRSSI(si4463_t* si4463)
+int8_t si4463_getCurrentRSSI(si4463_t* si4463)
 {
 	uint8_t cmd[2] = {GET_MODEM_STATUS, 0x00};
 	uint8_t rxbuff[8] = {0};
@@ -178,10 +178,10 @@ int16_t si4463_getCurrentRSSI(si4463_t* si4463)
 
 	// si4468 RSSI calculation formula
     si4463->status.currentRSSI = (int16_t)((float)rxbuff[2]/2 - 134.0f);
-	return si4463->status.currentRSSI;
+	return SI4463_OK;
 }
 
-int16_t si4463_getLatchRSSI(si4463_t* si4463)
+int8_t si4463_getLatchRSSI(si4463_t* si4463)
 {
 	uint8_t cmd[2] = {GET_MODEM_STATUS, 0x00};
 	uint8_t rxbuff[8] = {0};
@@ -190,7 +190,7 @@ int16_t si4463_getLatchRSSI(si4463_t* si4463)
 
 	// si4468 RSSI calculation formula
     si4463->status.latchRSSI = (int16_t)((float)rxbuff[3]/2 - 134.0f);
-	return si4463->status.latchRSSI;
+	return SI4463_OK;
 }
 
 int8_t si4463_clearTxFifo(si4463_t* si4463)
