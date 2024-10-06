@@ -403,6 +403,11 @@ typedef struct
     int16_t latchRSSI;
 } si4463_status_t;
 
+typedef struct
+{
+    si4463_state currState;
+    uint8_t currChannel;
+} si4463_state_t
 
 typedef struct
 {
@@ -423,6 +428,7 @@ typedef struct
     si4463_data_rate_t          dr;
     si4463_setting_t            settings;
     si4463_status_t             status;
+    si4463_state_t              state;
 } si4463_t;
 
 int8_t si4463_powerOnReset(si4463_t* si4463);
@@ -460,7 +466,9 @@ int8_t si4463_getModulation(si4463_t* si4463);
 int8_t si4463_setTxDataRate(si4463_t* si4463, si4463_data_rate dataRate);
 int8_t si4463_setRxDataRate(si4463_t* si4463, si4463_data_rate dataRate);
 int16_t si4463_getDataRate(si4463_t* si4463);
-int8_t si4463_enterStandbyMode(void);
+int8_t si4463_enterStandbyMode(si4463_t* si4463);
+int8_t si4463_getDeviceState(si4463_t* si4463);
+int8_t si4463_setDeviceState(si4463_t* si4463, si4463_state state);
 int8_t si4463_startTx(si4463_t* si4463, uint16_t dataLen, si4463_state nextState);
 void si4463_controlOOK(si4463_t* si4463, bool toneOn);
 

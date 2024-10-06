@@ -740,6 +740,37 @@ int16_t si4463_getDataRate(si4463_t* si4463)
         return res;
 }
 
+int8_t si4463_enterStandbyMode(si4463_t* si4463)
+{
+
+}
+
+int8_t si4463_getDeviceState(si4463_t* si4463)
+{
+    uint8_t cmd = REQUEST_DEVICE_STATE;
+    uint8_t rxbuff[2] = {0};
+
+    if(!si4463_sendCommand(si4463, &cmd, 1)) return SI4463_ERR_WRITE_REG;
+    if(!si4463_getResponse(si4463, rxbuff, 2)) return SI4463_ERR_READ_REG;
+
+    si4463->state.currState = (si4463_state)rxbuff[0];
+    si4463->state.currChannel = rxbuff[1];
+    return SI4463_OK;
+}
+
+int8_t si4463_setDeviceState(si4463_t* si4463, si4463_state state)
+{
+    uint8_t cmd[2] = {0};
+    cmd[0] = CHANGE_STATE;
+    cmd[1] = (uint8_t)state;
+
+    if(!si4463_sendCommand(si4463, &cmd, 2)) return SI4463_ERR_WRITE_REG;
+    if(!si4463_waitforCTS(si4463)) res = SI4463_CTS_TIMEOUT;
+
+    si4463->state.currState = state;
+    return SI4463_OK;
+}
+
 int8_t si4463_getDataRateConfig(si4463_t* si4463)
 {
     uint16_t propNum = PROP_MODEM_DATA_RATE;
