@@ -201,6 +201,8 @@ int8_t si4463_getModemStatus(si4463_t* si4463)
     if(!si4463_getResponse(si4463, rxbuff, 8)) return SI4463_ERR_READ_REG;
 
     // si4468 RSSI calculation formula
+    si4463->status.modemPend = rxbuff[0];
+    si4463->status.modemStatus = rxbuff[1];
     si4463->status.currentRSSI = (int16_t)((float)rxbuff[2]/2 - 134.0f);
     si4463->status.latchRSSI = (int16_t)((float)rxbuff[3]/2 - 134.0f);
     si4463->status.ant1RSSI = (int16_t)((float)rxbuff[4]/2 - 134.0f);

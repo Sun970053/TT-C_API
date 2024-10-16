@@ -399,6 +399,8 @@ typedef struct
 
 typedef struct
 {
+    uint8_t modemPend;
+    uint8_t modemStatus;
     int16_t currentRSSI;
     int16_t latchRSSI;
     int16_t ant1RSSI;
