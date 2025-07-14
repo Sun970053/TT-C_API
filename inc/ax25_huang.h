@@ -143,7 +143,7 @@ typedef struct
   uint8_t srcSSID;
   uint8_t control;
   uint8_t protocolID;
-  uint16_t payloadLen;
+  uint8_t payloadLen;
   uint8_t rcvSeqNumber;
   uint16_t sendSeqNumber;
   uint8_t payload[AX25_MAX_PAYLOAD_LENGTH];
@@ -158,7 +158,7 @@ typedef struct
   uint8_t srcSSID;
   uint8_t control;
   uint8_t protocolID;
-  uint16_t payloadLen;
+  uint8_t payloadLen;
   uint8_t rcvSeqNumber;
   uint16_t sendSeqNumber;
   uint8_t payload[AX25_MAX_PAYLOAD_LENGTH];
