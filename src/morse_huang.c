@@ -207,10 +207,12 @@ void morse_changeStateByTimeout(morse_t* morse)
         morse->currentState = state;
         break;
     default:
+        {
         // never happen
         morse_state state = msWarmUpPause;
         morse->currentTimeoutInMS = morse_getTimeoutForState(state);
         morse->currentState = state;
+        }
     }
 }
 
