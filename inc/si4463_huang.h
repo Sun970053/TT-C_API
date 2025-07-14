@@ -9,6 +9,7 @@
 #define INC_SI4463_HUANG_H_
 
 #include "radio_config_Si4468_GMSK_9600.h"
+#include "radio_config_Si4468_DIR_RX_2.h"
 #include "radio_config_selection.h"
 #include <stdio.h>
 #include <stdint.h>
@@ -129,13 +130,21 @@
 #define PROP_MODEM_MDM_CTRL             0x2019
 #define PROP_MODEM_IF_CONTROL           0x201A
 #define PROP_MODEM_IF_FREQ              0x201B
+#define PROP_MODEM_BCR_MISC1            0x202A
+#define PROP_MODEM_AFC_GEAR             0x202C
+#define PROP_MODEM_AFC_GAIN_1           0x202F
+#define PROP_MODEM_OOK_MISC             0x2043
+#define PROP_MODEM_RAW_CONTROL          0x2045
+#define PROP_MODEM_RAW_SEARCH2          0x2050
 #define PROP_MODEM_CLKGEN_BAND          0x2051
+#define PROP_MODEM_ONE_SHOT_AFC         0x2055
 
 /* Power Ampliifier */
 #define PROP_PA_MODE                    0x2200
 #define PROP_PA_PWR_LVL                 0x2201
 #define PROP_PA_BIAS_CLKDUTY            0x2202
 #define PROP_PA_TC                      0x2203
+#define PROP_PA_RAMP_EX                 0x2204
 
 /* Frequency Control */
 #define PROP_FREQ_CONTROL_INTE          0x4000
@@ -160,6 +169,9 @@ typedef enum
     GPIO_INPUT =                    4,
     GPIO_32_KHZ_CLOCK =             5,
     GPIO_DATA_OUT =                 11,
+    GPIO_RX_DATA_CLK =              17,
+    GPIO_RX_DATA =                  20,
+    GPIO_RX_RAW_DATA =              21,
     GPIO_TX_STATE =                 32,
     GPIO_RX_STATE =                 33,
     GPIO_INT_SIGNAL =               39
@@ -252,9 +264,12 @@ typedef enum
     MOD_CW,
 	MOD_OOK,
 	MOD_2FSK,
-	MOD_2GFSK,
+	MOD_2GFSK_0_75,
+	MOD_MSK,
+	MOD_GMSK,
 	MOD_4FSK,
-	MOD_4GFSK
+	MOD_4GFSK,
+	MOD_TYPE_COUNT
 } si4463_mod_type;
 
 /* Error codes. Negative number, because it can be distinguished by returning a value. */
@@ -263,7 +278,7 @@ typedef enum
 #define SI4463_ERR_INVALID_NOP           (-2)
 #define SI4463_ERR_READ_REG              (-10)
 #define SI4463_ERR_WRITE_REG             (-11)
-#define SI4463_INIT_TIMEOUT              (-20)
+#define SI4463_INIT_TIMEOUT              (-20) // Ground Sharing
 #define SI4463_CTS_TIMEOUT               (-21)
 #define SI4463_TX_TIMEOUT                (-30)
 #define SI4463_ERR_OVER_TX_FIFO          (-31)
@@ -280,10 +295,11 @@ typedef enum
 /* Data rate */
 typedef enum
 {
-    DR_1200,
+    DR_1200, // Default for OOK
     DR_2400,
     DR_4800,
-    DR_9600
+    DR_9600,
+    DR_COUNT
 } si4463_data_rate;
 
 /* Tx power */
@@ -376,9 +392,9 @@ typedef struct
 /* Data rate config */
 typedef struct
 {
-    uint32_t modemDataRate;
-    uint32_t modemTxNCOMode;
-    si4463_txosr TxOSR;
+    uint32_t                    modemDataRate;
+    uint32_t                    modemTxNCOMode;
+    si4463_txosr                TxOSR;
 } si4463_data_rate_t;
 
 
@@ -436,9 +452,19 @@ typedef struct
     si4463_state_t              state;
 } si4463_t;
 
+// Radio modulation and data rate configuration porting
+typedef struct
+{
+    uint8_t *tx;
+    uint8_t *rx;
+} modembuffer_t;
+
+extern modembuffer_t modem_table[MOD_TYPE_COUNT][DR_COUNT];
+
 int8_t si4463_powerOnReset(si4463_t* si4463);
 int8_t si4463_init(si4463_t* si4463);
 int8_t si4463_checkNop(si4463_t* si4463);
+int8_t si4463_gpioPinCfg(si4463_t* si4463, si4463_gpio_mode gpio0, si4463_gpio_mode gpio1, si4463_gpio_mode gpio2, si4463_gpio_mode gpio3);
 int8_t si4463_getPartInfo(si4463_t* si4463);
 int8_t si4463_getFuncInfo(si4463_t* si4463);
 int8_t si4463_getADCInfo(si4463_t* si4463);
@@ -450,11 +476,13 @@ int8_t si4463_getLatchRSSI(si4463_t* si4463);
 int8_t si4463_getModemStatus(si4463_t* si4463);
 int8_t si4463_clearTxFifo(si4463_t* si4463);
 int8_t si4463_clearRxFifo(si4463_t* si4463);
+int8_t si4463_resetInterrupts(si4463_t* si4463);
 int8_t si4463_clearInterrupts(si4463_t* si4463);
 int8_t si4463_getInterrupts(si4463_t* si4463);
 int8_t si4463_clearChipStatus(si4463_t* si4463);
 int8_t si4463_transmit(si4463_t* si4463, uint8_t* txData, uint8_t txDataLen, si4463_state nextState);
 int8_t si4463_initRx(si4463_t* si4463, uint16_t dataLen, si4463_state nextStateAfterTimeOut, si4463_state nextStateAfterValid, si4463_state nextStateAfterInvalid);
+int8_t si4463_initDirectRx(si4463_t* si4463);
 int8_t si4463_receive(si4463_t* si4463, uint8_t* rxData, uint8_t rxDataLen);
 int8_t si4463_setTxPower(si4463_t* si4463, uint8_t power);
 int8_t si4463_getTxPower(si4463_t* si4463);
@@ -469,13 +497,13 @@ int32_t si4463_getFrequency(si4463_t* si4463);
 int8_t si4463_setTxModulation(si4463_t* si4463, si4463_mod_type mod);
 int8_t si4463_setRxModulation(si4463_t* si4463, si4463_mod_type mod);
 int8_t si4463_getModulation(si4463_t* si4463);
-int8_t si4463_setTxDataRate(si4463_t* si4463, si4463_data_rate dataRate);
-int8_t si4463_setRxDataRate(si4463_t* si4463, si4463_data_rate dataRate);
+int8_t si4463_setTxDataRate(si4463_t* si4463, si4463_data_rate datarate);
+int8_t si4463_setRxDataRate(si4463_t* si4463, si4463_data_rate datarate);
 int16_t si4463_getDataRate(si4463_t* si4463);
-int8_t si4463_enterStandbyMode(si4463_t* si4463);
 int8_t si4463_getDeviceState(si4463_t* si4463);
 int8_t si4463_setDeviceState(si4463_t* si4463, si4463_state state);
 int8_t si4463_startTx(si4463_t* si4463, uint16_t dataLen, si4463_state nextState);
 void si4463_controlOOK(si4463_t* si4463, bool toneOn);
+int8_t si4463_setPARamp(si4463_t* si4463, uint8_t tc);
 
 #endif
