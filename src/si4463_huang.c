@@ -25,23 +25,9 @@ int8_t si4463_txInterrupt(si4463_t* si4463);
 int8_t si4463_rxInterrupt(si4463_t* si4463);
 
 uint8_t SI4463_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY;
-uint8_t GMSK_9600_TX[] = RADIO_CONFIGURATION_GMSK_9600_TX;
-uint8_t GMSK_9600_RX[] = RADIO_CONFIGURATION_GMSK_9600_RX;
-uint8_t GMSK_4800_TX[] = RADIO_CONFIGURATION_GMSK_4800_TX;
-uint8_t GMSK_4800_RX[] = RADIO_CONFIGURATION_GMSK_4800_RX;
-uint8_t GMSK_2400_TX[] = RADIO_CONFIGURATION_GMSK_2400_TX;
-uint8_t GMSK_2400_RX[] = RADIO_CONFIGURATION_GMSK_2400_RX;
-uint8_t GMSK_1200_TX[] = RADIO_CONFIGURATION_GMSK_1200_TX;
-uint8_t GMSK_1200_RX[] = RADIO_CONFIGURATION_GMSK_1200_RX;
-uint8_t FSK_9600_TX[] = RADIO_CONFIGURATION_FSK_9600_TX;
-uint8_t FSK_9600_RX[] = RADIO_CONFIGURATION_FSK_9600_RX;
-uint8_t FSK_4800_TX[] = RADIO_CONFIGURATION_FSK_4800_TX;
-uint8_t FSK_4800_RX[] = RADIO_CONFIGURATION_FSK_4800_RX;
-uint8_t FSK_2400_TX[] = RADIO_CONFIGURATION_FSK_2400_TX;
-uint8_t FSK_2400_RX[] = RADIO_CONFIGURATION_FSK_2400_RX;
-uint8_t FSK_1200_TX[] = RADIO_CONFIGURATION_FSK_1200_TX;
-uint8_t FSK_1200_RX[] = RADIO_CONFIGURATION_FSK_1200_RX;
-uint8_t OOK_TX[] = RADIO_CONFIGURATION_OOK_TX;
+uint8_t SI4463_CONFIGURATION_DATA_DIRRX[] = RADIO_CONFIGURATION_DATA_ARRAY_DIR_RX;
+
+modembuffer_t modem_table[MOD_TYPE_COUNT][DR_COUNT] = {0};
 
 uint8_t gcmd[SI4463_MAX_FIFO_SIZE + 1];
 
@@ -80,8 +66,8 @@ int8_t si4463_init(si4463_t* si4463)
 
     si4463->settings.txDataRate = DR_9600;
     si4463->settings.rxDataRate = DR_9600;
-    si4463->settings.txMod = MOD_2GFSK;
-    si4463->settings.rxMod = MOD_2GFSK;
+    si4463->settings.txMod = MOD_GMSK;
+    si4463->settings.rxMod = MOD_GMSK;
     return SI4463_OK;
 }
 
@@ -93,6 +79,24 @@ int8_t si4463_checkNop(si4463_t* si4463)
 	if(!si4463_waitforCTS(si4463)) return SI4463_CTS_TIMEOUT;
 
 	return SI4463_OK;
+}
+
+int8_t si4463_gpioPinCfg(si4463_t* si4463, si4463_gpio_mode gpio0, si4463_gpio_mode gpio1, si4463_gpio_mode gpio2, si4463_gpio_mode gpio3)
+{
+    uint8_t cmd[8] = {0};
+    cmd[0] = GPIO_PIN_CFG;
+    cmd[1] = gpio0;
+    cmd[2] = gpio1;
+    cmd[3] = gpio2;
+    cmd[4] = gpio3;
+    cmd[5] = 0x00;
+    cmd[6] = 0x00;
+    cmd[7] = 0x00;
+
+    if(!si4463_sendCommand(si4463, cmd, 8)) return SI4463_ERR_WRITE_REG;
+    if(!si4463_waitforCTS(si4463)) return SI4463_CTS_TIMEOUT;
+
+    return SI4463_OK;
 }
 
 int8_t si4463_getPartInfo(si4463_t* si4463)
@@ -229,6 +233,16 @@ int8_t si4463_clearRxFifo(si4463_t* si4463)
     return SI4463_OK;
 }
 
+int8_t si4463_resetInterrupts(si4463_t* si4463)
+{
+    uint8_t buff[4] = {0};
+    buff[0] = 0x00;
+    buff[1] = 0x00;
+    buff[2] = 0x00;
+    buff[3] = CHIP_READY_EN;
+    return si4463_setProperties(si4463, buff, 4, PROP_INT_CTL_ENABLE);
+}
+
 int8_t si4463_clearInterrupts(si4463_t* si4463)
 {
     uint8_t cmd[4] = {GET_INT_STATUS, 0x00, 0x00, 0x00};
@@ -304,7 +318,7 @@ int8_t si4463_transmit(si4463_t* si4463, uint8_t* txData, uint8_t txDataLen, si4
         if(result != SI4463_OK) return result;
         result = si4463_startTx(si4463, txDataLen + 1, nextState);
         if(result != SI4463_OK) return result;
-        int counter = 0;
+        uint16_t counter = 0;
         // Check if IRQ pin is pulled down
         while(counter < SI4463_TRANSMIT_TIMEOUT)
         {
@@ -338,6 +352,44 @@ int8_t si4463_initRx(si4463_t* si4463, uint16_t dataLen, si4463_state nextStateA
     if(!si4463_waitforCTS(si4463)) return SI4463_CTS_TIMEOUT;
 
     return SI4463_OK;
+}
+
+int8_t si4463_initDirectRx(si4463_t* si4463)
+{
+    int result = si4463_clearRxFifo(si4463);
+    if(result != SI4463_OK) return result;
+    result = si4463_resetInterrupts(si4463);
+    if(result != SI4463_OK) return result;
+    result = si4463_clearInterrupts(si4463);
+    if(result != SI4463_OK) return result;
+    result = si4463_setDeviceState(si4463, STATE_RX);
+    if(result != SI4463_OK) return result;
+
+    result = si4463_configArray(si4463, SI4463_CONFIGURATION_DATA_DIRRX);
+    if(result != SI4463_OK) return result;
+
+//    uint8_t cmd[10] = {0};
+
+    // Synchronous modem operation
+//    cmd[0] = 0xC0;
+//    si4463_setProperties(si4463, cmd, 1, PROP_MODEM_BCR_MISC1);
+//    cmd[0] = 0x00;
+//    si4463_setProperties(si4463, cmd, 1, PROP_MODEM_ONE_SHOT_AFC);
+//    cmd[0] = 0x83;
+//    si4463_setProperties(si4463, cmd, 1, PROP_MODEM_AFC_GAIN_1);
+
+    // Asynchronous modem operation
+//    cmd[0] = 0x0A;
+//    si4463_setProperties(si4463, cmd, 1, PROP_MODEM_RAW_SEARCH2);
+//    cmd[0] = 0x10;
+//    si4463_setProperties(si4463, cmd, 1, PROP_MODEM_RAW_CONTROL);
+//    cmd[0] = 0x03;
+//    si4463_setProperties(si4463, cmd, 1, PROP_MODEM_OOK_MISC);
+
+
+    return SI4463_OK;
+    // Active GPIO2
+//    return si4463_gpioPinCfg(si4463, GPIO_NO_CHANGE, GPIO_NO_CHANGE, GPIO_RX_DATA_CLK , GPIO_RX_DATA);
 }
 
 int8_t si4463_receive(si4463_t* si4463, uint8_t* rxData, uint8_t rxDataLen)
@@ -542,54 +594,20 @@ int32_t si4463_getFrequency(si4463_t* si4463)
 
 int8_t si4463_setTxModulation(si4463_t* si4463, si4463_mod_type mod)
 {
-    int res = SI4463_OK;
-    // OOK for beacons
+    int8_t res = SI4463_OK;
+    // OOK for transmission/beacons
     if(mod == MOD_OOK)
     {
-        res = si4463_configArray(si4463, OOK_TX);
+        res = si4463_configArray(si4463, modem_table[mod][DR_1200].tx);
         si4463->settings.txMod = mod;
         return res;
     }
 
-    // GMSK and FSK for telemetries
-    switch (si4463->settings.txDataRate)
-    {
-    case DR_9600:
-        if(mod == MOD_2GFSK)
-            res = si4463_configArray(si4463, GMSK_9600_TX);
-        else if(mod == MOD_2FSK)
-            res = si4463_configArray(si4463, FSK_9600_TX);
-        else
-            res = SI4463_ERR_INVALID_MOD;
-        break;
-    case DR_4800:
-        if(mod == MOD_2GFSK)
-            res = si4463_configArray(si4463, GMSK_4800_TX);
-        else if(mod == MOD_2FSK)
-            res = si4463_configArray(si4463, FSK_4800_TX);
-        else
-            res = SI4463_ERR_INVALID_MOD;
-        break;
-    case DR_2400:
-        if(mod == MOD_2GFSK)
-            res = si4463_configArray(si4463, GMSK_2400_TX);
-        else if(mod == MOD_2FSK)
-            res = si4463_configArray(si4463, FSK_2400_TX);
-        else
-            res = SI4463_ERR_INVALID_MOD;
-        break;
-    case DR_1200:
-        if(mod == MOD_2GFSK)
-            res = si4463_configArray(si4463, GMSK_1200_TX);
-        else if(mod == MOD_2FSK)
-            res = si4463_configArray(si4463, FSK_1200_TX);
-        else
-            res = SI4463_ERR_INVALID_MOD;
-        break;
-    default:
-        DEBUG_PRINTF("Invalid Tx data rate ! \r\n");
-        res = SI4463_ERR_BAD_PARAM;
-    }
+    // Check whether the variable "mod" is reasonable.
+    if(mod > MOD_GMSK || mod < MOD_2FSK) return SI4463_ERR_INVALID_MOD;
+    // FSK, 2GFSK and GMSK for telemetry/echo
+    res = si4463_configArray(si4463, modem_table[mod][si4463->settings.txDataRate].tx);
+
     if(res == SI4463_OK)
         si4463->settings.txMod = mod;
     return res;
@@ -597,45 +615,11 @@ int8_t si4463_setTxModulation(si4463_t* si4463, si4463_mod_type mod)
 
 int8_t si4463_setRxModulation(si4463_t* si4463, si4463_mod_type mod)
 {
-    int res = SI4463_OK;
-    switch (si4463->settings.rxDataRate)
-    {
-    case DR_9600:
-        if(mod == MOD_2GFSK)
-            res = si4463_configArray(si4463, GMSK_9600_RX);
-        else if(mod == MOD_2FSK)
-            res = si4463_configArray(si4463, FSK_9600_RX);
-        else
-            res = SI4463_ERR_INVALID_MOD;
-        break;
-    case DR_4800:
-        if(mod == MOD_2GFSK)
-            res = si4463_configArray(si4463, GMSK_4800_RX);
-        else if(mod == MOD_2FSK)
-            res = si4463_configArray(si4463, FSK_4800_RX);
-        else
-            res = SI4463_ERR_INVALID_MOD;
-        break;
-    case DR_2400:
-        if(mod == MOD_2GFSK)
-            res = si4463_configArray(si4463, GMSK_2400_RX);
-        else if(mod == MOD_2FSK)
-            res = si4463_configArray(si4463, FSK_2400_RX);
-        else
-            res = SI4463_ERR_INVALID_MOD;
-        break;
-    case DR_1200:
-        if(mod == MOD_2GFSK)
-            res = si4463_configArray(si4463, GMSK_1200_RX);
-        else if(mod == MOD_2FSK)
-            res = si4463_configArray(si4463, FSK_1200_RX);
-        else
-            res = SI4463_ERR_INVALID_MOD;
-        break;
-    default:
-        DEBUG_PRINTF("Invalid Rx data rate ! \r\n");
-        res = SI4463_ERR_BAD_PARAM;
-    }
+    // Check whether the variable "mod" is reasonable.
+    if(mod > MOD_GMSK || mod < MOD_2FSK) return SI4463_ERR_INVALID_MOD;
+
+    int8_t res = si4463_configArray(si4463, modem_table[mod][si4463->settings.rxDataRate].rx);
+
     if(res == SI4463_OK)
         si4463->settings.rxMod = mod;
     return res;
@@ -643,7 +627,7 @@ int8_t si4463_setRxModulation(si4463_t* si4463, si4463_mod_type mod)
 
 int8_t si4463_getModulation(si4463_t* si4463)
 {
-    uint16_t propNum = PROP_MODEM_MOD_TYPE;
+    const uint16_t propNum = PROP_MODEM_MOD_TYPE;
     uint8_t rxbuff = 0;
     int res = si4463_getProperties(si4463, &rxbuff, 1, propNum);
     if(res == SI4463_OK)
@@ -655,79 +639,27 @@ int8_t si4463_getModulation(si4463_t* si4463)
         return res;
 }
 
-int8_t si4463_setTxDataRate(si4463_t* si4463, si4463_data_rate dataRate)
+int8_t si4463_setTxDataRate(si4463_t* si4463, si4463_data_rate datarate)
 {
-    int res = SI4463_OK;
-    switch (si4463->settings.txMod)
-    {
-    case MOD_2GFSK:
-        if(dataRate == DR_9600)
-            res = si4463_configArray(si4463, GMSK_9600_TX);
-        else if(dataRate == DR_4800)
-            res = si4463_configArray(si4463, GMSK_4800_TX);
-        else if(dataRate == DR_2400)
-            res = si4463_configArray(si4463, GMSK_2400_TX);
-        else if(dataRate == DR_1200)
-            res = si4463_configArray(si4463, GMSK_1200_TX);
-        else
-            res = SI4463_ERR_INVALID_DR;
-        break;
-    case MOD_2FSK:
-        if(dataRate == DR_9600)
-            res = si4463_configArray(si4463, FSK_9600_TX);
-        else if(dataRate == DR_4800)
-            res = si4463_configArray(si4463, FSK_4800_TX);
-        else if(dataRate == DR_2400)
-            res = si4463_configArray(si4463, FSK_2400_TX);
-        else if(dataRate == DR_1200)
-            res = si4463_configArray(si4463, FSK_1200_TX);
-        else
-            res = SI4463_ERR_INVALID_DR;
-        break;
-    default:
-        DEBUG_PRINTF("Invalid Tx modulation ! \r\n");
-        res = SI4463_ERR_BAD_PARAM;
-    }
+    // Check whether the variable "datarate" is reasonable.
+    if(datarate > DR_9600) return SI4463_ERR_INVALID_DR;
+
+    int8_t res = si4463_configArray(si4463, modem_table[si4463->settings.txMod][datarate].tx);
+
     if(res == SI4463_OK)
-        si4463->settings.txDataRate = dataRate;
+        si4463->settings.txDataRate = datarate;
     return res;
 }
 
-int8_t si4463_setRxDataRate(si4463_t* si4463, si4463_data_rate dataRate)
+int8_t si4463_setRxDataRate(si4463_t* si4463, si4463_data_rate datarate)
 {
-    int res = SI4463_OK;
-    switch (si4463->settings.rxMod)
-    {
-    case MOD_2GFSK:
-        if(dataRate == DR_9600)
-            res = si4463_configArray(si4463, GMSK_9600_RX);
-        else if(dataRate == DR_4800)
-            res = si4463_configArray(si4463, GMSK_4800_RX);
-        else if(dataRate == DR_2400)
-            res = si4463_configArray(si4463, GMSK_2400_RX);
-        else if(dataRate == DR_1200)
-            res = si4463_configArray(si4463, GMSK_1200_RX);
-        else
-            res = SI4463_ERR_INVALID_DR;
-        break;
-    case MOD_2FSK:
-        if(dataRate == DR_9600)
-            res = si4463_configArray(si4463, FSK_9600_RX);
-        else if(dataRate == DR_4800)
-            res = si4463_configArray(si4463, FSK_4800_RX);
-        else if(dataRate == DR_2400)
-            res = si4463_configArray(si4463, FSK_2400_RX);
-        else if(dataRate == DR_1200)
-            res = si4463_configArray(si4463, FSK_1200_RX);
-        else
-            res = SI4463_ERR_INVALID_DR;
-        break;
-    default:
-        DEBUG_PRINTF("Invalid Rx modulation ! \r\n");
-        res = SI4463_ERR_BAD_PARAM;
-    }
+    // Check whether the variable "datarate" is reasonable.
+    if(datarate > DR_9600) return SI4463_ERR_INVALID_DR;
+
+    int8_t res = si4463_configArray(si4463, modem_table[si4463->settings.rxMod][datarate].rx);
+
     if(res == SI4463_OK)
-        si4463->settings.rxDataRate = dataRate;
+        si4463->settings.rxDataRate = datarate;
     return res;
 }
 
@@ -756,11 +688,6 @@ int16_t si4463_getDataRate(si4463_t* si4463)
     }
     else
         return res;
-}
-
-int8_t si4463_enterStandbyMode(si4463_t* si4463)
-{
-    return SI4463_OK;
 }
 
 int8_t si4463_getDeviceState(si4463_t* si4463)
@@ -980,3 +907,10 @@ void si4463_controlOOK(si4463_t* si4463, bool toneOn)
     else
         si4463->OOK(si4463->gpios.gpio_low);
 }
+
+int8_t si4463_setPARamp(si4463_t* si4463, uint8_t tc)
+{
+    if(tc > 15) return SI4463_ERR_BAD_PARAM;
+    return si4463_setProperties(si4463, &tc, 1, PROP_PA_RAMP_EX);
+}
+
