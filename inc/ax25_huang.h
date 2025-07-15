@@ -114,6 +114,13 @@
 #define RADIOLIB_ERR_INVALID_REPEATER_CALLSIGN                  (-803)
 
 /*!
+  \brief The receiving packet length is too short.
+
+  This length is at least greater than the preamble length.
+*/
+#define RADIOLIB_ERR_RX_PCKT_LENGTH                             (-807)
+
+/*!
   \brief The receiving CRC checksum is wrong.
 
   The length of CRC is 2 bytes.
@@ -178,8 +185,8 @@ ax25receiveframe_t* createAX25ReceiveFrame(const char* destCallsign, uint8_t des
 void deleteAX25SendFrame(ax25frame_t* ax25frame);
 void deleteAX25ReceiveFrame(ax25frame_t* ax25frame);
 void initCRC(ax25frame_t* ax25frame);
-uint16_t AX25Frame_HDLC_Generator(ax25frame_t* ax25frame, uint8_t** pStuffedFrame, uint16_t* stuffedFrameLen);
-uint16_t AX25Frame_HDLC_Parser(ax25frame_t* ax25frame , uint8_t* stuffedFrame, uint16_t stuffedFrameLen);
+int16_t AX25Frame_HDLC_Generator(ax25frame_t* ax25frame, uint8_t** pStuffedFrame, uint16_t* stuffedFrameLen);
+int16_t AX25Frame_HDLC_Parser(ax25frame_t* ax25frame , uint8_t* stuffedFrame, uint16_t stuffedFrameLen);
 void ax25_nrzi_encode(uint8_t* input, uint8_t* output, uint16_t len);
 void ax25_nrzi_decode(uint8_t* input, uint8_t* output, uint16_t len);
 void ax25_g3ruh_scrambler_init(uint32_t tap_mask);
